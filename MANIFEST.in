@@ -1,0 +1,91 @@
+# Include documentation files
+include README.md
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+include AUTHORS.md
+include CITATION.cff
+
+# Include configuration files
+include pyproject.toml
+include setup.cfg
+include MANIFEST.in
+
+# Include package metadata
+include lamb/__version__.py
+recursive-include lamb *.pyi
+recursive-include lamb py.typed
+
+# Include example files
+recursive-include examples *.py
+recursive-include examples *.md
+recursive-include examples *.txt
+
+# Include notebook files
+recursive-include notebooks *.ipynb
+recursive-include notebooks *.md
+
+# Include test files
+recursive-include tests *.py
+recursive-include tests *.json
+recursive-include tests *.yaml
+recursive-include tests *.yml
+
+# Include documentation source files
+recursive-include docs *.rst
+recursive-include docs *.md
+recursive-include docs *.py
+recursive-include docs *.ipynb
+recursive-include docs *.png
+recursive-include docs *.jpg
+recursive-include docs *.svg
+recursive-include docs *.gif
+
+# Include benchmark files
+recursive-include benchmarks *.py
+recursive-include benchmarks *.json
+recursive-include benchmarks *.csv
+
+# Include GitHub workflow files
+recursive-include .github *.yml
+recursive-include .github *.yaml
+recursive-include .github *.md
+
+# Include configuration templates
+recursive-include config *.yaml
+recursive-include config *.yml
+recursive-include config *.json
+recursive-include config *.toml
+
+# Include data files
+recursive-include data *.csv
+recursive-include data *.json
+recursive-include data *.yaml
+recursive-include data *.yml
+recursive-include data *.txt
+
+# Exclude unnecessary files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude .git*
+global-exclude .DS_Store
+global-exclude .coverage
+global-exclude .pytest_cache
+global-exclude .mypy_cache
+global-exclude .tox
+global-exclude .venv
+global-exclude venv
+global-exclude env
+global-exclude .eggs
+global-exclude *.egg-info
+global-exclude build
+global-exclude dist
+global-exclude .sphinx
+global-exclude docs/_build
+global-exclude .idea
+global-exclude .vscode
+global-exclude *.log
+global-exclude *.tmp
+global-exclude *.temp
