@@ -89,15 +89,14 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/lamb"
-Documentation = "https://lamb.readthedocs.io"
-Repository = "https://github.com/your-org/lamb.git"
-"Bug Tracker" = "https://github.com/your-org/lamb/issues"
-"Source Code" = "https://github.com/your-org/lamb"
+Homepage = "https://github.com/Brishian427/LAMB"
+Repository = "https://github.com/Brishian427/LAMB.git"
+"Bug Tracker" = "https://github.com/Brishian427/LAMB/issues"
+"Source Code" = "https://github.com/Brishian427/LAMB"
 "Download" = "https://pypi.org/project/lamb-abm/#files"
 
-[project.scripts]
-lamb = "lamb.cli:main"
+# [project.scripts]
+# lamb = "lamb.cli:main"  # CLI not implemented yet
 
 [tool.setuptools.packages.find]
 where = ["."]
