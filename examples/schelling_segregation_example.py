@@ -167,6 +167,7 @@ class SchellingEnvironment(GridEnvironment):
         super().__init__(dimensions=(schelling_params.width, schelling_params.height), **kwargs)
         self.schelling_params = schelling_params
         self.step_count = 0
+        self.agents = {}  # Initialize agents dictionary
         
         # Initialize agents
         self._create_agents()

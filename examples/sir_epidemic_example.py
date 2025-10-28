@@ -166,6 +166,7 @@ class SIREnvironment(NetworkEnvironment):
         self.num_agents = num_agents
         self.sir_params = sir_params or SIRParameters()
         self.step_count = 0
+        self.agents = {}  # Initialize agents dictionary
         
         # Initialize network
         self._create_network()
@@ -212,13 +213,14 @@ class SIREnvironment(NetworkEnvironment):
         
         # Randomly select initial infected agents
         infected_indices = np.random.choice(
-            self.num_agents, 
-            size=self.sir_params.initial_infected, 
+            len(self.agents), 
+            size=min(self.sir_params.initial_infected, len(self.agents)), 
             replace=False
         )
         
         for idx in infected_indices:
-            agent = self.agents[idx]
+            agent_id = list(self.agents.keys())[idx]
+            agent = self.agents[agent_id]
             agent.state = SIRState.INFECTED
             agent.metadata["sir_state"] = SIRState.INFECTED.value
             agent.metadata["infection_time"] = 0
@@ -248,19 +250,31 @@ class SIREnvironment(NetworkEnvironment):
         total_agents = sum(current_counts.values())
         
         # Basic ratios
-        self.epidemic_metrics = {
-            "s_ratio": current_counts["susceptible"] / total_agents,
-            "i_ratio": current_counts["infected"] / total_agents,
-            "r_ratio": current_counts["recovered"] / total_agents,
-            "total_agents": total_agents,
-            "step": self.step_count
-        }
+        if total_agents > 0:
+            self.epidemic_metrics = {
+                "s_ratio": current_counts["susceptible"] / total_agents,
+                "i_ratio": current_counts["infected"] / total_agents,
+                "r_ratio": current_counts["recovered"] / total_agents,
+                "total_agents": total_agents,
+                "step": self.step_count
+            }
+        else:
+            self.epidemic_metrics = {
+                "s_ratio": 0.0,
+                "i_ratio": 0.0,
+                "r_ratio": 0.0,
+                "total_agents": 0,
+                "step": self.step_count
+            }
         
         # Peak infection
         if len(self.sir_counts_history) > 1:
             max_infected = max(step["infected"] for step in self.sir_counts_history)
             self.epidemic_metrics["peak_infected"] = max_infected
-            self.epidemic_metrics["peak_infected_ratio"] = max_infected / total_agents
+            if total_agents > 0:
+                self.epidemic_metrics["peak_infected_ratio"] = max_infected / total_agents
+            else:
+                self.epidemic_metrics["peak_infected_ratio"] = 0.0
         
         # Epidemic duration (time from first infection to no more infected)
         if current_counts["infected"] == 0 and len(self.sir_counts_history) > 1:
@@ -278,19 +292,34 @@ class SIREnvironment(NetworkEnvironment):
         final_counts = self.sir_counts_history[-1]
         total_agents = sum(final_counts.values())
         
-        return {
-            "final_susceptible": final_counts["susceptible"],
-            "final_infected": final_counts["infected"],
-            "final_recovered": final_counts["recovered"],
-            "total_agents": total_agents,
-            "total_steps": self.step_count,
-            "peak_infected": self.epidemic_metrics.get("peak_infected", 0),
-            "peak_infected_ratio": self.epidemic_metrics.get("peak_infected_ratio", 0),
-            "epidemic_duration": self.epidemic_metrics.get("epidemic_duration", self.step_count),
-            "final_s_ratio": final_counts["susceptible"] / total_agents,
-            "final_i_ratio": final_counts["infected"] / total_agents,
-            "final_r_ratio": final_counts["recovered"] / total_agents
-        }
+        if total_agents > 0:
+            return {
+                "final_susceptible": final_counts["susceptible"],
+                "final_infected": final_counts["infected"],
+                "final_recovered": final_counts["recovered"],
+                "total_agents": total_agents,
+                "total_steps": self.step_count,
+                "peak_infected": self.epidemic_metrics.get("peak_infected", 0),
+                "peak_infected_ratio": self.epidemic_metrics.get("peak_infected_ratio", 0),
+                "epidemic_duration": self.epidemic_metrics.get("epidemic_duration", self.step_count),
+                "final_s_ratio": final_counts["susceptible"] / total_agents,
+                "final_i_ratio": final_counts["infected"] / total_agents,
+                "final_r_ratio": final_counts["recovered"] / total_agents
+            }
+        else:
+            return {
+                "final_susceptible": 0,
+                "final_infected": 0,
+                "final_recovered": 0,
+                "total_agents": 0,
+                "total_steps": self.step_count,
+                "peak_infected": 0,
+                "peak_infected_ratio": 0.0,
+                "epidemic_duration": self.step_count,
+                "final_s_ratio": 0.0,
+                "final_i_ratio": 0.0,
+                "final_r_ratio": 0.0
+            }
 
 
 def run_sir_simulation(sir_params: SIRParameters, max_steps: int = 200) -> Tuple[SIREnvironment, List[Dict]]:
