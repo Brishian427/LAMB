@@ -1,6 +1,6 @@
 # LAMB: LLM Agent Model Base
 
-[![PyPI version](https://img.shields.io/pypi/v/lamb-abm.svg)](https://pypi.org/project/lamb-abm/)
+[![PyPI version](https://img.shields.io/pypi/v/lamb-abm.svg?style=flat&color=blue)](https://pypi.org/project/lamb-abm/)
 [![Python versions](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/Brishian427/LAMB/workflows/Tests/badge.svg)](https://github.com/Brishian427/LAMB/actions)
