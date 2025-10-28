@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """
-LAMB Framework: SIR Epidemic Model Example
+LAMB Framework: SIR Rumor Spread Model Example
 
-This example implements the classic SIR (Susceptible-Infected-Recovered) epidemic model
-using the LAMB framework's Network paradigm. The model simulates how diseases spread
-through a population over time.
+This example implements the SIR (Susceptible-Infected-Recovered) model for rumor spread
+using the LAMB framework's Network paradigm. The model simulates how rumors spread
+through a social network over time.
 
 Key Features:
-- Network-based disease transmission
-- Realistic epidemic dynamics
-- Visualization of disease spread
+- Network-based rumor transmission
+- Realistic rumor spread dynamics
+- Visualization of rumor propagation
 - Parameter sensitivity analysis
 - Multiple network topologies
 
-The SIR model is fundamental in epidemiology and demonstrates:
-- How network structure affects disease spread
-- The importance of vaccination strategies
-- Herd immunity thresholds
-- Epidemic vs endemic behavior
+The SIR model for rumors demonstrates:
+- How network structure affects rumor spread
+- The role of "super-spreaders" in information diffusion
+- Rumor extinction vs persistence
+- Social influence patterns
 """
 
 import numpy as np
@@ -39,18 +39,18 @@ from lamb.engines import RuleEngine
 
 
 class SIRState(Enum):
-    """SIR model states"""
-    SUSCEPTIBLE = "susceptible"
-    INFECTED = "infected"
-    RECOVERED = "recovered"
+    """SIR rumor spread model states"""
+    SUSCEPTIBLE = "ignorant"      # Haven't heard the rumor
+    INFECTED = "spreader"         # Actively spreading the rumor
+    RECOVERED = "stifler"         # Heard it but stopped spreading
 
 
 @dataclass
 class SIRParameters:
-    """SIR model parameters"""
-    infection_rate: float = 0.3      # Probability of infection per contact
-    recovery_rate: float = 0.1       # Probability of recovery per time step
-    initial_infected: int = 5        # Number of initially infected agents
+    """SIR rumor spread model parameters"""
+    spread_rate: float = 0.3         # Probability of rumor spread per contact
+    stifle_rate: float = 0.1         # Probability of becoming stifler per time step
+    initial_spreaders: int = 5       # Number of initially spreading agents
     network_type: str = "random"     # Network topology type
     network_params: Dict = None      # Network-specific parameters
     
@@ -60,30 +60,30 @@ class SIRParameters:
 
 
 class SIRAgent(NetworkAgent):
-    """Agent for SIR epidemic model"""
+    """Agent for SIR rumor spread model"""
     
     def __init__(self, agent_id: AgentID, position: Position, 
                  state: SIRState = SIRState.SUSCEPTIBLE, **kwargs):
         super().__init__(agent_id, position, **kwargs)
         self.state = state
-        self.infection_time = 0  # Time when agent became infected
-        self.recovery_time = None  # Time when agent recovered
+        self.spread_time = 0     # Time when agent started spreading
+        self.stifle_time = None  # Time when agent became stifler
         
         # Add state to metadata
         self.metadata["sir_state"] = state.value
-        self.metadata["infection_time"] = self.infection_time
-        self.metadata["recovery_time"] = self.recovery_time
+        self.metadata["spread_time"] = self.spread_time
+        self.metadata["stifle_time"] = self.stifle_time
     
     def observe(self, environment: NetworkEnvironment) -> Observation:
         """Observe neighbors and their states"""
         neighbors = environment.get_neighbors(self.agent_id, radius=1.0)
         
         # Count neighbors by state
-        neighbor_states = {"susceptible": 0, "infected": 0, "recovered": 0}
+        neighbor_states = {"ignorant": 0, "spreader": 0, "stifler": 0}
         for neighbor_id in neighbors:
             if neighbor_id in environment.agents:
                 neighbor = environment.agents[neighbor_id]
-                state = neighbor.metadata.get("sir_state", "susceptible")
+                state = neighbor.metadata.get("sir_state", "ignorant")
                 neighbor_states[state] += 1
         
         return Observation(
@@ -108,58 +108,58 @@ class SIRAgent(NetworkAgent):
             return self._decide_recovered(observation)
     
     def _decide_susceptible(self, observation: Observation) -> Action:
-        """Susceptible agents can become infected"""
-        infected_neighbors = observation.environment_state["neighbor_states"]["infected"]
+        """Ignorant agents can become spreaders when they hear the rumor"""
+        spreader_neighbors = observation.environment_state["neighbor_states"]["spreader"]
         
-        if infected_neighbors > 0:
-            # Probability of infection increases with infected neighbors
-            infection_prob = 1 - (1 - 0.3) ** infected_neighbors  # 30% base rate
-            if np.random.random() < infection_prob:
+        if spreader_neighbors > 0:
+            # Probability of rumor spread increases with spreading neighbors
+            spread_prob = 1 - (1 - 0.3) ** spreader_neighbors  # 30% base rate
+            if np.random.random() < spread_prob:
                 return Action(
                     agent_id=self.agent_id,
-                    action_type="become_infected",
-                    parameters={"infection_time": self.environment.step_count}
+                    action_type="become_spreader",
+                    parameters={"spread_time": self.environment.step_count}
                 )
         
         return Action(agent_id=self.agent_id, action_type="wait", parameters={})
     
     def _decide_infected(self, observation: Observation) -> Action:
-        """Infected agents can recover"""
-        # Recovery probability (10% per time step)
+        """Spreader agents can become stiflers (lose interest)"""
+        # Stifle probability (10% per time step)
         if np.random.random() < 0.1:
             return Action(
                 agent_id=self.agent_id,
-                action_type="recover",
-                parameters={"recovery_time": self.environment.step_count}
+                action_type="become_stifler",
+                parameters={"stifle_time": self.environment.step_count}
             )
         
         return Action(agent_id=self.agent_id, action_type="wait", parameters={})
     
     def _decide_recovered(self, observation: Observation) -> Action:
-        """Recovered agents are immune"""
+        """Stifler agents don't spread rumors anymore"""
         return Action(agent_id=self.agent_id, action_type="wait", parameters={})
     
     def execute_action(self, action: Action, environment: NetworkEnvironment) -> bool:
         """Execute the decided action"""
-        if action.action_type == "become_infected":
+        if action.action_type == "become_spreader":
             self.state = SIRState.INFECTED
-            self.infection_time = action.parameters.get("infection_time", 0)
+            self.spread_time = action.parameters.get("spread_time", 0)
             self.metadata["sir_state"] = self.state.value
-            self.metadata["infection_time"] = self.infection_time
+            self.metadata["spread_time"] = self.spread_time
             return True
             
-        elif action.action_type == "recover":
+        elif action.action_type == "become_stifler":
             self.state = SIRState.RECOVERED
-            self.recovery_time = action.parameters.get("recovery_time", 0)
+            self.stifle_time = action.parameters.get("stifle_time", 0)
             self.metadata["sir_state"] = self.state.value
-            self.metadata["recovery_time"] = self.recovery_time
+            self.metadata["stifle_time"] = self.stifle_time
             return True
         
         return True  # "wait" action always succeeds
 
 
 class SIREnvironment(NetworkEnvironment):
-    """Environment for SIR epidemic simulation"""
+    """Environment for SIR rumor spread simulation"""
     
     def __init__(self, num_agents: int = 1000, sir_params: SIRParameters = None, **kwargs):
         super().__init__(**kwargs)
@@ -176,7 +176,7 @@ class SIREnvironment(NetworkEnvironment):
         
         # Statistics tracking
         self.sir_counts_history = []
-        self.epidemic_metrics = {}
+        self.rumor_metrics = {}
     
     def _create_network(self):
         """Create network topology based on parameters"""
@@ -211,38 +211,38 @@ class SIREnvironment(NetworkEnvironment):
             agent = SIRAgent(i, (0, 0))  # Position doesn't matter for network
             self.add_agent(agent)
         
-        # Randomly select initial infected agents
-        infected_indices = np.random.choice(
+        # Randomly select initial spreaders
+        spreader_indices = np.random.choice(
             len(self.agents), 
-            size=min(self.sir_params.initial_infected, len(self.agents)), 
+            size=min(self.sir_params.initial_spreaders, len(self.agents)), 
             replace=False
         )
         
-        for idx in infected_indices:
+        for idx in spreader_indices:
             agent_id = list(self.agents.keys())[idx]
             agent = self.agents[agent_id]
             agent.state = SIRState.INFECTED
             agent.metadata["sir_state"] = SIRState.INFECTED.value
-            agent.metadata["infection_time"] = 0
+            agent.metadata["spread_time"] = 0
     
     def update_state(self):
         """Update environment state and collect statistics"""
         self.step_count += 1
         
         # Count agents by state
-        sir_counts = {"susceptible": 0, "infected": 0, "recovered": 0}
+        sir_counts = {"ignorant": 0, "spreader": 0, "stifler": 0}
         for agent in self.agents.values():
-            state = agent.metadata.get("sir_state", "susceptible")
+            state = agent.metadata.get("sir_state", "ignorant")
             sir_counts[state] += 1
         
         # Store history
         self.sir_counts_history.append(sir_counts.copy())
         
-        # Calculate epidemic metrics
-        self._calculate_epidemic_metrics()
+        # Calculate rumor metrics
+        self._calculate_rumor_metrics()
     
-    def _calculate_epidemic_metrics(self):
-        """Calculate key epidemic metrics"""
+    def _calculate_rumor_metrics(self):
+        """Calculate key rumor spread metrics"""
         if not self.sir_counts_history:
             return
         
@@ -251,15 +251,15 @@ class SIREnvironment(NetworkEnvironment):
         
         # Basic ratios
         if total_agents > 0:
-            self.epidemic_metrics = {
-                "s_ratio": current_counts["susceptible"] / total_agents,
-                "i_ratio": current_counts["infected"] / total_agents,
-                "r_ratio": current_counts["recovered"] / total_agents,
+            self.rumor_metrics = {
+                "s_ratio": current_counts["ignorant"] / total_agents,
+                "i_ratio": current_counts["spreader"] / total_agents,
+                "r_ratio": current_counts["stifler"] / total_agents,
                 "total_agents": total_agents,
                 "step": self.step_count
             }
         else:
-            self.epidemic_metrics = {
+            self.rumor_metrics = {
                 "s_ratio": 0.0,
                 "i_ratio": 0.0,
                 "r_ratio": 0.0,
@@ -267,25 +267,25 @@ class SIREnvironment(NetworkEnvironment):
                 "step": self.step_count
             }
         
-        # Peak infection
+        # Peak spreading
         if len(self.sir_counts_history) > 1:
-            max_infected = max(step["infected"] for step in self.sir_counts_history)
-            self.epidemic_metrics["peak_infected"] = max_infected
+            max_spreaders = max(step["spreader"] for step in self.sir_counts_history)
+            self.rumor_metrics["peak_spreaders"] = max_spreaders
             if total_agents > 0:
-                self.epidemic_metrics["peak_infected_ratio"] = max_infected / total_agents
+                self.rumor_metrics["peak_spreaders_ratio"] = max_spreaders / total_agents
             else:
-                self.epidemic_metrics["peak_infected_ratio"] = 0.0
+                self.rumor_metrics["peak_spreaders_ratio"] = 0.0
         
-        # Epidemic duration (time from first infection to no more infected)
-        if current_counts["infected"] == 0 and len(self.sir_counts_history) > 1:
-            # Find when epidemic ended
+        # Rumor duration (time from first spread to no more spreaders)
+        if current_counts["spreader"] == 0 and len(self.sir_counts_history) > 1:
+            # Find when rumor ended
             for i, step in enumerate(reversed(self.sir_counts_history)):
-                if step["infected"] > 0:
-                    self.epidemic_metrics["epidemic_duration"] = len(self.sir_counts_history) - i
+                if step["spreader"] > 0:
+                    self.rumor_metrics["rumor_duration"] = len(self.sir_counts_history) - i
                     break
     
-    def get_epidemic_summary(self) -> Dict:
-        """Get comprehensive epidemic summary"""
+    def get_rumor_summary(self) -> Dict:
+        """Get comprehensive rumor spread summary"""
         if not self.sir_counts_history:
             return {}
         
@@ -294,28 +294,28 @@ class SIREnvironment(NetworkEnvironment):
         
         if total_agents > 0:
             return {
-                "final_susceptible": final_counts["susceptible"],
-                "final_infected": final_counts["infected"],
-                "final_recovered": final_counts["recovered"],
+                "final_ignorant": final_counts["ignorant"],
+                "final_spreaders": final_counts["spreader"],
+                "final_stiflers": final_counts["stifler"],
                 "total_agents": total_agents,
                 "total_steps": self.step_count,
-                "peak_infected": self.epidemic_metrics.get("peak_infected", 0),
-                "peak_infected_ratio": self.epidemic_metrics.get("peak_infected_ratio", 0),
-                "epidemic_duration": self.epidemic_metrics.get("epidemic_duration", self.step_count),
-                "final_s_ratio": final_counts["susceptible"] / total_agents,
-                "final_i_ratio": final_counts["infected"] / total_agents,
-                "final_r_ratio": final_counts["recovered"] / total_agents
+                "peak_spreaders": self.rumor_metrics.get("peak_spreaders", 0),
+                "peak_spreaders_ratio": self.rumor_metrics.get("peak_spreaders_ratio", 0),
+                "rumor_duration": self.rumor_metrics.get("rumor_duration", self.step_count),
+                "final_s_ratio": final_counts["ignorant"] / total_agents,
+                "final_i_ratio": final_counts["spreader"] / total_agents,
+                "final_r_ratio": final_counts["stifler"] / total_agents
             }
         else:
             return {
-                "final_susceptible": 0,
-                "final_infected": 0,
-                "final_recovered": 0,
+                "final_ignorant": 0,
+                "final_spreaders": 0,
+                "final_stiflers": 0,
                 "total_agents": 0,
                 "total_steps": self.step_count,
-                "peak_infected": 0,
-                "peak_infected_ratio": 0.0,
-                "epidemic_duration": self.step_count,
+                "peak_spreaders": 0,
+                "peak_spreaders_ratio": 0.0,
+                "rumor_duration": self.step_count,
                 "final_s_ratio": 0.0,
                 "final_i_ratio": 0.0,
                 "final_r_ratio": 0.0
@@ -323,11 +323,11 @@ class SIREnvironment(NetworkEnvironment):
 
 
 def run_sir_simulation(sir_params: SIRParameters, max_steps: int = 200) -> Tuple[SIREnvironment, List[Dict]]:
-    """Run a complete SIR simulation"""
-    print(f"🦠 Running SIR Epidemic Simulation")
+    """Run a complete SIR rumor spread simulation"""
+    print(f"📢 Running SIR Rumor Spread Simulation")
     print(f"   Network: {sir_params.network_type} ({sir_params.network_params})")
-    print(f"   Agents: {sir_params.initial_infected} infected out of 1000")
-    print(f"   Parameters: β={sir_params.infection_rate}, γ={sir_params.recovery_rate}")
+    print(f"   Agents: {sir_params.initial_spreaders} spreaders out of 1000")
+    print(f"   Parameters: β={sir_params.spread_rate}, γ={sir_params.stifle_rate}")
     
     # Create environment
     environment = SIREnvironment(num_agents=1000, sir_params=sir_params)
@@ -360,26 +360,26 @@ def run_sir_simulation(sir_params: SIRParameters, max_steps: int = 200) -> Tuple
         # Store step results
         step_data = {
             "step": step,
-            "s_count": environment.epidemic_metrics["s_ratio"] * 1000,
-            "i_count": environment.epidemic_metrics["i_ratio"] * 1000,
-            "r_count": environment.epidemic_metrics["r_ratio"] * 1000,
-            "s_ratio": environment.epidemic_metrics["s_ratio"],
-            "i_ratio": environment.epidemic_metrics["i_ratio"],
-            "r_ratio": environment.epidemic_metrics["r_ratio"]
+            "s_count": environment.rumor_metrics["s_ratio"] * 1000,
+            "i_count": environment.rumor_metrics["i_ratio"] * 1000,
+            "r_count": environment.rumor_metrics["r_ratio"] * 1000,
+            "s_ratio": environment.rumor_metrics["s_ratio"],
+            "i_ratio": environment.rumor_metrics["i_ratio"],
+            "r_ratio": environment.rumor_metrics["r_ratio"]
         }
         results.append(step_data)
         
-        # Check for epidemic end
-        if environment.epidemic_metrics["i_ratio"] == 0 and step > 10:
-            print(f"   Epidemic ended at step {step}")
+        # Check for rumor end
+        if environment.rumor_metrics["i_ratio"] == 0 and step > 10:
+            print(f"   Rumor ended at step {step}")
             break
     
     return environment, results
 
 
 def visualize_sir_results(environment: SIREnvironment, results: List[Dict], 
-                         title: str = "SIR Epidemic Model"):
-    """Visualize SIR simulation results"""
+                         title: str = "SIR Rumor Spread Model"):
+    """Visualize SIR rumor spread simulation results"""
     fig, axes = plt.subplots(2, 2, figsize=(15, 10))
     
     # Extract data
@@ -389,9 +389,9 @@ def visualize_sir_results(environment: SIREnvironment, results: List[Dict],
     r_counts = [r["r_count"] for r in results]
     
     # Plot 1: SIR curves over time
-    axes[0, 0].plot(steps, s_counts, label='Susceptible', color='blue', linewidth=2)
-    axes[0, 0].plot(steps, i_counts, label='Infected', color='red', linewidth=2)
-    axes[0, 0].plot(steps, r_counts, label='Recovered', color='green', linewidth=2)
+    axes[0, 0].plot(steps, s_counts, label='Ignorant', color='blue', linewidth=2)
+    axes[0, 0].plot(steps, i_counts, label='Spreader', color='red', linewidth=2)
+    axes[0, 0].plot(steps, r_counts, label='Stifler', color='green', linewidth=2)
     axes[0, 0].set_title(f'{title} - Population Over Time')
     axes[0, 0].set_xlabel('Time Steps')
     axes[0, 0].set_ylabel('Number of Agents')
@@ -413,32 +413,42 @@ def visualize_sir_results(environment: SIREnvironment, results: List[Dict],
         axes[0, 1].text(0.5, 0.5, 'No network data', ha='center', va='center', 
                         transform=axes[0, 1].transAxes)
     
-    # Plot 3: Infection rate over time
-    infection_rates = [r["i_ratio"] for r in results]
-    axes[1, 0].plot(steps, infection_rates, color='red', linewidth=2)
-    axes[1, 0].set_title('Infection Rate Over Time')
+    # Plot 3: Spreading rate over time
+    spreading_rates = [r["i_ratio"] for r in results]
+    axes[1, 0].plot(steps, spreading_rates, color='red', linewidth=2)
+    axes[1, 0].set_title('Spreading Rate Over Time')
     axes[1, 0].set_xlabel('Time Steps')
-    axes[1, 0].set_ylabel('Infection Rate')
+    axes[1, 0].set_ylabel('Spreading Rate')
     axes[1, 0].grid(True, alpha=0.3)
     
-    # Plot 4: Epidemic metrics
-    summary = environment.get_epidemic_summary()
+    # Plot 4: Rumor metrics
+    summary = environment.get_rumor_summary()
     metrics_text = f"""
-    Peak Infected: {summary.get('peak_infected', 0):.0f}
-    Peak Rate: {summary.get('peak_infected_ratio', 0):.1%}
-    Duration: {summary.get('epidemic_duration', 0)} steps
-    Final S: {summary.get('final_susceptible', 0):.0f}
-    Final I: {summary.get('final_infected', 0):.0f}
-    Final R: {summary.get('final_recovered', 0):.0f}
+    Peak Spreaders: {summary.get('peak_spreaders', 0):.0f}
+    Peak Rate: {summary.get('peak_spreaders_ratio', 0):.1%}
+    Duration: {summary.get('rumor_duration', 0)} steps
+    Final S: {summary.get('final_ignorant', 0):.0f}
+    Final I: {summary.get('final_spreaders', 0):.0f}
+    Final R: {summary.get('final_stiflers', 0):.0f}
     """
     axes[1, 1].text(0.1, 0.5, metrics_text, transform=axes[1, 1].transAxes,
                     fontsize=10, verticalalignment='center',
                     bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray"))
-    axes[1, 1].set_title('Epidemic Summary')
+    axes[1, 1].set_title('Rumor Summary')
     axes[1, 1].axis('off')
     
     plt.tight_layout()
+    
+    # Save the plot
+    plt.savefig('sir_epidemic_results.png', dpi=300, bbox_inches='tight')
+    print("📊 Visualization saved as 'sir_epidemic_results.png'")
+    
+    # Show the plot
     plt.show()
+    
+    # Keep the plot open for a moment
+    import time
+    time.sleep(2)
 
 
 def compare_network_topologies():
@@ -467,9 +477,9 @@ def compare_network_topologies():
         i_counts = [r["i_count"] for r in sim_results]
         r_counts = [r["r_count"] for r in sim_results]
         
-        plt.plot(steps, s_counts, label='Susceptible', color='blue', alpha=0.7)
-        plt.plot(steps, i_counts, label='Infected', color='red', alpha=0.7)
-        plt.plot(steps, r_counts, label='Recovered', color='green', alpha=0.7)
+        plt.plot(steps, s_counts, label='Ignorant', color='blue', alpha=0.7)
+        plt.plot(steps, i_counts, label='Spreader', color='red', alpha=0.7)
+        plt.plot(steps, r_counts, label='Stifler', color='green', alpha=0.7)
         
         plt.title(f'{name} Network')
         plt.xlabel('Time Steps')
@@ -483,38 +493,38 @@ def compare_network_topologies():
     # Print summary statistics
     print("\n📊 Network Comparison Summary:")
     for name, (env, sim_results) in results.items():
-        summary = env.get_epidemic_summary()
+        summary = env.get_rumor_summary()
         print(f"   {name}:")
-        print(f"     Peak Infected: {summary.get('peak_infected', 0):.0f} ({summary.get('peak_infected_ratio', 0):.1%})")
-        print(f"     Duration: {summary.get('epidemic_duration', 0)} steps")
-        print(f"     Final Recovered: {summary.get('final_recovered', 0):.0f}")
+        print(f"     Peak Spreaders: {summary.get('peak_spreaders', 0):.0f} ({summary.get('peak_spreaders_ratio', 0):.1%})")
+        print(f"     Duration: {summary.get('rumor_duration', 0)} steps")
+        print(f"     Final Stiflers: {summary.get('final_stiflers', 0):.0f}")
 
 
 def main():
-    """Main function to run SIR epidemic examples"""
-    print("🦠 LAMB Framework: SIR Epidemic Model Example")
-    print("=" * 50)
+    """Main function to run SIR rumor spread examples"""
+    print("📢 LAMB Framework: SIR Rumor Spread Model Example")
+    print("=" * 60)
     
     # Example 1: Basic SIR simulation
-    print("\n1️⃣ Basic SIR Simulation")
+    print("\n1️⃣ Basic SIR Rumor Spread Simulation")
     sir_params = SIRParameters(
-        infection_rate=0.3,
-        recovery_rate=0.1,
-        initial_infected=10,
+        spread_rate=0.3,
+        stifle_rate=0.1,
+        initial_spreaders=10,
         network_type="random",
         network_params={"p": 0.01}
     )
     
     environment, results = run_sir_simulation(sir_params, max_steps=200)
-    visualize_sir_results(environment, results, "Basic SIR Model")
+    visualize_sir_results(environment, results, "Basic SIR Rumor Model")
     
     # Print summary
-    summary = environment.get_epidemic_summary()
-    print(f"\n📈 Epidemic Summary:")
-    print(f"   Peak Infected: {summary.get('peak_infected', 0):.0f} agents")
-    print(f"   Peak Rate: {summary.get('peak_infected_ratio', 0):.1%}")
-    print(f"   Duration: {summary.get('epidemic_duration', 0)} steps")
-    print(f"   Final Recovered: {summary.get('final_recovered', 0):.0f} agents")
+    summary = environment.get_rumor_summary()
+    print(f"\n📈 Rumor Summary:")
+    print(f"   Peak Spreaders: {summary.get('peak_spreaders', 0):.0f} agents")
+    print(f"   Peak Rate: {summary.get('peak_spreaders_ratio', 0):.1%}")
+    print(f"   Duration: {summary.get('rumor_duration', 0)} steps")
+    print(f"   Final Stiflers: {summary.get('final_stiflers', 0):.0f} agents")
     
     # Example 2: Compare network topologies
     print("\n2️⃣ Network Topology Comparison")
@@ -522,30 +532,30 @@ def main():
     
     # Example 3: Parameter sensitivity
     print("\n3️⃣ Parameter Sensitivity Analysis")
-    print("   Testing different infection rates...")
+    print("   Testing different spread rates...")
     
-    infection_rates = [0.1, 0.2, 0.3, 0.4, 0.5]
-    peak_infections = []
+    spread_rates = [0.1, 0.2, 0.3, 0.4, 0.5]
+    peak_spreadings = []
     
-    for rate in infection_rates:
-        params = SIRParameters(infection_rate=rate, recovery_rate=0.1)
+    for rate in spread_rates:
+        params = SIRParameters(spread_rate=rate, stifle_rate=0.1)
         env, sim_results = run_sir_simulation(params, max_steps=100)
-        summary = env.get_epidemic_summary()
-        peak_infections.append(summary.get('peak_infected_ratio', 0))
+        summary = env.get_rumor_summary()
+        peak_spreadings.append(summary.get('peak_spreaders_ratio', 0))
     
     plt.figure(figsize=(10, 6))
-    plt.plot(infection_rates, peak_infections, 'o-', linewidth=2, markersize=8)
-    plt.title('Peak Infection Rate vs Infection Rate Parameter')
-    plt.xlabel('Infection Rate (β)')
-    plt.ylabel('Peak Infection Rate')
+    plt.plot(spread_rates, peak_spreadings, 'o-', linewidth=2, markersize=8)
+    plt.title('Peak Spreading Rate vs Spread Rate Parameter')
+    plt.xlabel('Spread Rate (β)')
+    plt.ylabel('Peak Spreading Rate')
     plt.grid(True, alpha=0.3)
     plt.show()
     
-    print("\n✅ SIR Epidemic Model Examples Complete!")
-    print("   - Demonstrated network-based disease transmission")
+    print("\n✅ SIR Rumor Spread Model Examples Complete!")
+    print("   - Demonstrated network-based rumor transmission")
     print("   - Compared different network topologies")
     print("   - Analyzed parameter sensitivity")
-    print("   - Showed realistic epidemic dynamics")
+    print("   - Showed realistic rumor spread dynamics")
 
 
 if __name__ == "__main__":
