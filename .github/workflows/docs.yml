@@ -1,11 +1,7 @@
 name: Documentation
 
 on:
-  # Disabled for now - documentation not fully set up
-  # push:
-  #   branches: [ main ]
-  # pull_request:
-  #   branches: [ main ]
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   docs:
