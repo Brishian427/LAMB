@@ -3,8 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/lamb-abm.svg)](https://badge.fury.io/py/lamb-abm)
 [![Python versions](https://img.shields.io/pypi/pyversions/lamb-abm.svg)](https://pypi.org/project/lamb-abm/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/your-org/lamb/workflows/CI/badge.svg)](https://github.com/your-org/lamb/actions)
-[![Documentation Status](https://readthedocs.org/projects/lamb/badge/?version=latest)](https://lamb.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://github.com/Brishian427/LAMB/workflows/CI/badge.svg)](https://github.com/Brishian427/LAMB/actions)
 
 A unified framework for building agent-based models with Large Language Model integration, supporting multiple simulation paradigms and behavioral engines.
 
@@ -132,12 +131,7 @@ results = simulation.run(max_steps=1000)
 
 ## Documentation
 
-Full documentation is available at [https://lamb.readthedocs.io](https://lamb.readthedocs.io)
-
-- [Getting Started Guide](https://lamb.readthedocs.io/en/latest/getting_started.html)
-- [User Guide](https://lamb.readthedocs.io/en/latest/user_guide.html)
-- [API Reference](https://lamb.readthedocs.io/en/latest/api_reference.html)
-- [Examples Gallery](https://lamb.readthedocs.io/en/latest/examples.html)
+Documentation is currently being developed. For now, please refer to the examples in the `examples/` directory and the inline code documentation.
 
 ## Contributing
 
@@ -156,6 +150,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- Documentation: [https://lamb.readthedocs.io](https://lamb.readthedocs.io)
-- Issues: [GitHub Issues](https://github.com/your-org/lamb/issues)
-- Discussions: [GitHub Discussions](https://github.com/your-org/lamb/discussions)
+- Issues: [GitHub Issues](https://github.com/Brishian427/LAMB/issues)
+- Discussions: [GitHub Discussions](https://github.com/Brishian427/LAMB/discussions)
