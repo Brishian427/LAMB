@@ -114,7 +114,7 @@ def example_2_agent_personalities():
         "neutral": create_research_personality(
             name="neutral",
             traits={"neutrality": 0.8, "indifference": 0.6, "stability": 0.7},
-            goals=["maintain status quo", "avoid conflict", "stay safe"],
+            goals=["maintain status quo", "cooperate", "stay safe"],
             constraints=["don't rock the boat", "follow the crowd"],
             description="Neutral agent that avoids taking strong positions"
         )
@@ -265,7 +265,7 @@ Your response:""",
         "highly_susceptible": create_research_personality(
             name="highly_susceptible",
             traits={"influence_susceptibility": 0.9, "conformity": 0.8, "uncertainty": 0.6},
-            goals=["fit in", "follow group", "avoid conflict"],
+            goals=["fit in", "follow group", "cooperate"],
             constraints=["don't be too easily swayed"],
             description="Agent easily influenced by others"
         ),

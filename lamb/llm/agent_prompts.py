@@ -422,7 +422,7 @@ COMMON_PERSONALITIES = {
     
     "competitive": AgentPersonality(
         name="competitive",
-        traits={"competition": 0.9, "ambition": 0.8, "aggression": 0.6},
+        traits={"competition": 0.9, "ambition": 0.8, "assertiveness": 0.6},
         goals=["win", "gain advantage", "outperform others"],
         constraints=["follow rules", "maintain reputation"],
         description="A competitive agent that seeks to outperform others"

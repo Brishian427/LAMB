@@ -22,7 +22,7 @@ class InformationLevel(Enum):
     FULL = "full"           # See everything (current design)
     LIMITED = "limited"     # See only what's realistic
     PRIVACY = "privacy"     # Respect privacy boundaries
-    STRATEGIC = "strategic" # Military/strategic limitations
+    RESTRICTED = "restricted" # Restricted access limitations
 
 
 class InformationFilter(ABC):
@@ -110,8 +110,8 @@ class PrivacyAwareFilter(InformationFilter):
         return key not in private_keys
 
 
-class StrategicFilter(InformationFilter):
-    """Strategic filtering - military/strategic limitations"""
+class RestrictedFilter(InformationFilter):
+    """Restricted filtering - access limitations"""
     
     def __init__(self, visibility_range: float = 5.0, intelligence_level: float = 0.7):
         self.visibility_range = visibility_range
@@ -234,7 +234,7 @@ def demonstrate_information_access():
     
     print("\n🤔 Alternative Design: Configurable information access")
     print("  - More realistic for social simulations")
-    print("  - Better for strategic/military simulations")
+    print("  - Better for restricted access simulations")
     print("  - More complex to implement")
     print("  - Requires careful design decisions")
     
