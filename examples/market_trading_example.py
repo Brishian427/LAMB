@@ -29,6 +29,10 @@ from dataclasses import dataclass
 from enum import Enum
 import random
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from lamb.config import SimulationConfig, ParadigmType, EngineType
 from lamb.api import ResearchAPI
 from lamb.core import Action, Observation, AgentID, Position
@@ -107,7 +111,7 @@ class MarketAgent:
             position=self.position,
             neighbors=[],  # No neighbors in global paradigm
             paradigm="global",
-            data={
+            environment_state={
                 "current_price": market_data["current_price"],
                 "price_history": market_data["price_history"][-self.memory_length:],
                 "volume": market_data["volume"],
@@ -121,9 +125,9 @@ class MarketAgent:
     
     def decide(self, observation: Observation, engine) -> Action:
         """Decide trading action based on strategy"""
-        current_price = observation.data["current_price"]
-        price_history = observation.data["price_history"]
-        fundamental_value = observation.data["fundamental_value"]
+        current_price = observation.environment_state["current_price"]
+        price_history = observation.environment_state["price_history"]
+        fundamental_value = observation.environment_state["fundamental_value"]
         
         # Update price memory
         self.price_memory = price_history[-self.memory_length:]
@@ -144,7 +148,7 @@ class MarketAgent:
         elif self.strategy == TradingStrategy.CONTRARIAN:
             return self._contrarian_decision(current_price, price_history, max_shares)
         else:
-            return Action(agent_id=self.agent_id, action_type="hold")
+            return Action(agent_id=self.agent_id, action_type="hold", parameters={})
     
     def _fundamentalist_decision(self, current_price: float, fundamental_value: float, 
                                 max_shares: int) -> Action:
@@ -168,115 +172,117 @@ class MarketAgent:
                     parameters={"shares": shares_to_sell, "price": current_price}
                 )
         
-        return Action(agent_id=self.agent_id, action_type="hold")
+        return Action(agent_id=self.agent_id, action_type="hold", parameters={})
     
     def _noise_optimist_decision(self, current_price: float, max_shares: int) -> Action:
         """Noise optimist trading strategy"""
         if random.random() < 0.1:  # 10% chance to trade
             if random.random() < 0.7:  # 70% chance to buy
-                shares_to_buy = random.randint(1, max_shares)
-                if shares_to_buy > 0 and self.cash >= shares_to_buy * current_price:
-                    return Action(
-                        agent_id=self.agent_id,
-                        action_type="buy",
-                        parameters={"shares": shares_to_buy, "price": current_price}
-                    )
+                if max_shares > 0:
+                    shares_to_buy = random.randint(1, max_shares)
+                    if self.cash >= shares_to_buy * current_price:
+                        return Action(
+                            agent_id=self.agent_id,
+                            action_type="buy",
+                            parameters={"shares": shares_to_buy, "price": current_price}
+                        )
             else:  # 30% chance to sell
-                shares_to_sell = random.randint(1, self.shares)
-                if shares_to_sell > 0:
+                if self.shares > 0:
+                    shares_to_sell = random.randint(1, self.shares)
                     return Action(
                         agent_id=self.agent_id,
                         action_type="sell",
                         parameters={"shares": shares_to_sell, "price": current_price}
                     )
         
-        return Action(agent_id=self.agent_id, action_type="hold")
+        return Action(agent_id=self.agent_id, action_type="hold", parameters={})
     
     def _noise_pessimist_decision(self, current_price: float, max_shares: int) -> Action:
         """Noise pessimist trading strategy"""
         if random.random() < 0.1:  # 10% chance to trade
             if random.random() < 0.3:  # 30% chance to buy
-                shares_to_buy = random.randint(1, max_shares)
-                if shares_to_buy > 0 and self.cash >= shares_to_buy * current_price:
-                    return Action(
-                        agent_id=self.agent_id,
-                        action_type="buy",
-                        parameters={"shares": shares_to_buy, "price": current_price}
-                    )
+                if max_shares > 0:
+                    shares_to_buy = random.randint(1, max_shares)
+                    if self.cash >= shares_to_buy * current_price:
+                        return Action(
+                            agent_id=self.agent_id,
+                            action_type="buy",
+                            parameters={"shares": shares_to_buy, "price": current_price}
+                        )
             else:  # 70% chance to sell
-                shares_to_sell = random.randint(1, self.shares)
-                if shares_to_sell > 0:
+                if self.shares > 0:
+                    shares_to_sell = random.randint(1, self.shares)
                     return Action(
                         agent_id=self.agent_id,
                         action_type="sell",
                         parameters={"shares": shares_to_sell, "price": current_price}
                     )
         
-        return Action(agent_id=self.agent_id, action_type="hold")
+        return Action(agent_id=self.agent_id, action_type="hold", parameters={})
     
     def _momentum_decision(self, current_price: float, price_history: List[float], 
                           max_shares: int) -> Action:
         """Momentum trading strategy"""
         if len(price_history) < 2:
-            return Action(agent_id=self.agent_id, action_type="hold")
+            return Action(agent_id=self.agent_id, action_type="hold", parameters={})
         
         # Calculate price momentum
         recent_prices = price_history[-5:] if len(price_history) >= 5 else price_history
         if len(recent_prices) < 2:
-            return Action(agent_id=self.agent_id, action_type="hold")
+            return Action(agent_id=self.agent_id, action_type="hold", parameters={})
         
         momentum = (recent_prices[-1] - recent_prices[0]) / recent_prices[0]
         
         if momentum > 0.02:  # Strong upward momentum
-            shares_to_buy = min(max_shares, int(self.cash / current_price * 0.05))
-            if shares_to_buy > 0:
+            if max_shares > 0:
+                shares_to_buy = min(max_shares, int(self.cash / current_price * 0.05))
                 return Action(
                     agent_id=self.agent_id,
                     action_type="buy",
                     parameters={"shares": shares_to_buy, "price": current_price}
                 )
         elif momentum < -0.02:  # Strong downward momentum
-            shares_to_sell = min(self.shares, int(self.shares * 0.05))
-            if shares_to_sell > 0:
+            if self.shares > 0:
+                shares_to_sell = min(self.shares, int(self.shares * 0.05))
                 return Action(
                     agent_id=self.agent_id,
                     action_type="sell",
                     parameters={"shares": shares_to_sell, "price": current_price}
                 )
         
-        return Action(agent_id=self.agent_id, action_type="hold")
+        return Action(agent_id=self.agent_id, action_type="hold", parameters={})
     
     def _contrarian_decision(self, current_price: float, price_history: List[float], 
                            max_shares: int) -> Action:
         """Contrarian trading strategy"""
         if len(price_history) < 2:
-            return Action(agent_id=self.agent_id, action_type="hold")
+            return Action(agent_id=self.agent_id, action_type="hold", parameters={})
         
         # Calculate price momentum
         recent_prices = price_history[-5:] if len(price_history) >= 5 else price_history
         if len(recent_prices) < 2:
-            return Action(agent_id=self.agent_id, action_type="hold")
+            return Action(agent_id=self.agent_id, action_type="hold", parameters={})
         
         momentum = (recent_prices[-1] - recent_prices[0]) / recent_prices[0]
         
         if momentum > 0.02:  # Strong upward momentum - sell (contrarian)
-            shares_to_sell = min(self.shares, int(self.shares * 0.05))
-            if shares_to_sell > 0:
+            if self.shares > 0:
+                shares_to_sell = min(self.shares, int(self.shares * 0.05))
                 return Action(
                     agent_id=self.agent_id,
                     action_type="sell",
                     parameters={"shares": shares_to_sell, "price": current_price}
                 )
         elif momentum < -0.02:  # Strong downward momentum - buy (contrarian)
-            shares_to_buy = min(max_shares, int(self.cash / current_price * 0.05))
-            if shares_to_buy > 0:
+            if max_shares > 0:
+                shares_to_buy = min(max_shares, int(self.cash / current_price * 0.05))
                 return Action(
                     agent_id=self.agent_id,
                     action_type="buy",
                     parameters={"shares": shares_to_buy, "price": current_price}
                 )
         
-        return Action(agent_id=self.agent_id, action_type="hold")
+        return Action(agent_id=self.agent_id, action_type="hold", parameters={})
     
     def execute_action(self, action: Action, environment) -> bool:
         """Execute trading action"""

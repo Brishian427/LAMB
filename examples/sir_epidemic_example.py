@@ -27,6 +27,10 @@ from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from lamb.config import SimulationConfig, ParadigmType, EngineType
 from lamb.api import ResearchAPI
 from lamb.paradigms.network import NetworkAgent, NetworkEnvironment
@@ -87,7 +91,7 @@ class SIRAgent(NetworkAgent):
             position=self.position,
             neighbors=neighbors,
             paradigm="network",
-            data={
+            environment_state={
                 "my_state": self.state.value,
                 "neighbor_states": neighbor_states,
                 "total_neighbors": len(neighbors)
@@ -105,7 +109,7 @@ class SIRAgent(NetworkAgent):
     
     def _decide_susceptible(self, observation: Observation) -> Action:
         """Susceptible agents can become infected"""
-        infected_neighbors = observation.data["neighbor_states"]["infected"]
+        infected_neighbors = observation.environment_state["neighbor_states"]["infected"]
         
         if infected_neighbors > 0:
             # Probability of infection increases with infected neighbors
@@ -117,7 +121,7 @@ class SIRAgent(NetworkAgent):
                     parameters={"infection_time": self.environment.step_count}
                 )
         
-        return Action(agent_id=self.agent_id, action_type="wait")
+        return Action(agent_id=self.agent_id, action_type="wait", parameters={})
     
     def _decide_infected(self, observation: Observation) -> Action:
         """Infected agents can recover"""
@@ -129,11 +133,11 @@ class SIRAgent(NetworkAgent):
                 parameters={"recovery_time": self.environment.step_count}
             )
         
-        return Action(agent_id=self.agent_id, action_type="wait")
+        return Action(agent_id=self.agent_id, action_type="wait", parameters={})
     
     def _decide_recovered(self, observation: Observation) -> Action:
         """Recovered agents are immune"""
-        return Action(agent_id=self.agent_id, action_type="wait")
+        return Action(agent_id=self.agent_id, action_type="wait", parameters={})
     
     def execute_action(self, action: Action, environment: NetworkEnvironment) -> bool:
         """Execute the decided action"""

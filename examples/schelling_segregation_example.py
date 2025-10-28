@@ -27,6 +27,10 @@ from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from lamb.config import SimulationConfig, ParadigmType, EngineType
 from lamb.api import ResearchAPI
 from lamb.paradigms.grid import GridAgent, GridEnvironment
@@ -107,7 +111,7 @@ class SchellingAgent(GridAgent):
             position=self.position,
             neighbors=neighbors,
             paradigm="grid",
-            data={
+            environment_state={
                 "agent_type": self.agent_type.value,
                 "happiness": self.happiness,
                 "neighbor_types": neighbor_types,
@@ -118,12 +122,12 @@ class SchellingAgent(GridAgent):
     
     def decide(self, observation: Observation, engine) -> Action:
         """Decide whether to move based on happiness"""
-        happiness = observation.data["happiness"]
-        moves_made = observation.data["moves_made"]
+        happiness = observation.environment_state["happiness"]
+        moves_made = observation.environment_state["moves_made"]
         
         # If happy enough or moved too much, stay
         if happiness >= 0.3 or moves_made >= self.max_moves:
-            return Action(agent_id=self.agent_id, action_type="stay")
+            return Action(agent_id=self.agent_id, action_type="stay", parameters={})
         
         # If unhappy, try to move to a better location
         return Action(
